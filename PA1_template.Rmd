@@ -12,6 +12,7 @@ Loading and reading the data, store it in *raw_data*.
 library("lubridate")
 library("ggplot2")
 library("dplyr")
+library("knitr")
 URL <-
         "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
 download.file(URL, destfile = "dataset.zip")
@@ -153,4 +154,6 @@ plot(
         ylab = "Average number of steps",
         main = "Weekends activity pattern"
 )
+knit2html("PA1_template.md")
 ```
+
