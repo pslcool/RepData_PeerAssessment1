@@ -1,25 +1,156 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Aim of the project
 
+This project is get summary of a personal movement dataset.
 
-## Loading and preprocessing the data
+Three varibales of this dataset are: *steps* *data* *interval*
 
+## 1. Loading and processing the data
 
+Loading and reading the data, store it in *raw_data*.
 
-## What is mean total number of steps taken per day?
+```{r echo=TRUE}
+library("lubridate")
+library("ggplot2")
+library("dplyr")
+URL <-
+        "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(URL, destfile = "dataset.zip")
+unzip("dataset.zip")
+raw_data <- read.csv("activity.csv")
+```
 
+Check the basic information of the data.
 
+```{r echo=TRUE}
+class(raw_data)
+str(raw_data)
+raw_data$date <- as.Date(raw_data$date, "%Y-%m-%d")
+summary(raw_data)
+```
 
-## What is the average daily activity pattern?
+The number of missing values.
 
+```{r echo=TRUE}
+NA_num <- sum(is.na(raw_data$steps))
+```
 
+There are `r NA_num` missing values of *steps*.
 
-## Imputing missing values
+## 2. What is mean total number of steps taken per day?
 
+Add column of total number, mean and median of steps taken per day.
 
+```{r echo=TRUE}
+date_sum <-
+        as.data.frame(tapply(raw_data$steps, raw_data$date, sum, na.rm = TRUE))
+colnames(date_sum) = "date_sum"
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+Plot the histogram of the total number, mean and median of steps taken each day.
+
+```{r echo=TRUE}
+psum <- ggplot(date_sum, aes(date_sum))
+psum + geom_histogram(bins = 10,
+                      color = "grey",
+                      fill = "red") + ggtitle("The total number of steps taken each day") +
+        labs(x = "Total number of steps", y = "Frequency")
+mean_date <- round(mean(date_sum$date_sum))
+median_date <- median(date_sum$date_sum)
+```
+
+| Mean number of steps taken each day is `r mean_date`.
+| Median number of steps taken each day is `r median_date`.
+
+## 3. What is the average daily activity pattern?
+
+We could use mean of 5 minutes interval data to calculate the daily activity pattern.
+
+```{r echo=TRUE}
+dailyact_mean <-
+        tapply(raw_data$steps, raw_data$interval, mean, na.rm = TRUE)
+plot(
+        y = dailyact_mean,
+        x = names(dailyact_mean),
+        type = "l",
+        lwd = 2,
+        col = "orange",
+        xlab = "5 minutes interval",
+        ylab = "Average number of steps",
+        main = "Daily activity pattern"
+)
+```
+
+## 4. Imputing missing values of data
+
+Missing values of *stpes* in the dataset should be filled by the average value of the 5 minutes interval.
+
+```{r echo=TRUE}
+for (i in 1:17568) {
+        if (is.na(raw_data[i, "steps"])) {
+                interval_serial <- raw_data[i, "interval"]
+                raw_data[i, "steps"] <- as.integer(dailyact_mean[as.character(interval_serial)])
+        }
+}
+NA_newnum <- sum(is.na(raw_data$steps))
+```
+
+Now, the number of missing value is `r NA_newnum`.
+
+## 5. The total number of steps taken each day after missing values are imputed
+
+After imputing the missing values, let's replot the histogram of the total number of steps each day.
+
+```{r echo=TRUE}
+date_sum_new <-
+        as.data.frame(tapply(raw_data$steps, raw_data$date, sum))
+colnames(date_sum_new) = "date_sum"
+psum_new <- ggplot(date_sum_new, aes(date_sum))
+psum_new + geom_histogram(bins = 10,
+                      color = "grey",
+                      fill = "purple") + ggtitle("The total number of steps taken each day") +
+        labs(x = "Total number of steps", y = "Frequency")
+
+```
+
+As the new graphic shows, the histogram become more smooth after imputing the missing values.
+
+## 6. The average number of steps taken per 5-minute interval across weekdays and weekends
+
+In order to distinguish the number of steps in weekdays and weekends, we need add a column called weekday. Then subset the dateset twice, the one is weekdays data, another is weedens data.
+
+```{r echo=TRUE}
+raw_data <- mutate(raw_data, weekday = wday(raw_data$date))
+weekdays_interval <- subset(raw_data, raw_data$weekday > 1.5 & raw_data$weekday < 6.5)
+weekends_interval <- subset(raw_data, raw_data$weekday == 1 | raw_data$weekday == 7)
+weekdays_mean <-
+        tapply(weekdays_interval$steps, weekdays_interval$interval, mean)
+weekends_mean <-
+        tapply(weekends_interval$steps, weekends_interval$interval, mean)
+
+```
+
+Last, call *plot* to make the comparing graphic.
+
+```{r echo=TRUE}
+par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+plot(
+        y = weekdays_mean,
+        x = names(weekdays_mean),
+        type = "l",
+        lwd = 2,
+        col = "darkred",
+        xlab = "5 minutes interval",
+        ylab = "Average number of steps",
+        main = "Weekdays activity pattern"
+)
+plot(
+        y = weekends_mean,
+        x = names(weekends_mean),
+        type = "l",
+        lwd = 2,
+        col = "yellow",
+        xlab = "5 minutes interval",
+        ylab = "Average number of steps",
+        main = "Weekends activity pattern"
+)
+```
